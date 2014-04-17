@@ -33,7 +33,7 @@ class CefBrowser(Widget):
     # 2. Local mode forwards keys to CEF only when an editable
     #    control is focused (input type=text|password or textarea).
     keyboard_mode = OptionProperty("local", options=("global", "local"))
-    url = StringProperty("http://www.rentouch.ch")
+    url = StringProperty("about:blank")
     resources_dir = StringProperty("")
     browser = None
     popup = None
@@ -42,7 +42,7 @@ class CefBrowser(Widget):
 
     def __init__(self, *largs, **dargs):
         super(CefBrowser, self).__init__()
-        self.url = dargs.get("url", "http://www.rentouch.ch")
+        self.url = dargs.get("url", "")
         self.keyboard_mode = dargs.get("keyboard_mode", "local")
         self.resources_dir = dargs.get("resources_dir", "")
         self.__rect = None
@@ -142,7 +142,7 @@ class CefBrowser(Widget):
             self.__rect.texture = self.texture
 
     def on_url(self, instance, value):
-        if self.browser:
+        if self.browser and value:
             self.browser.Navigate(self.url)
 
     def set_keyboard_mode(self, *largs):
@@ -252,37 +252,84 @@ class CefBrowser(Widget):
             Window.release_all_keyboards()
             self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__keyboard_requested = false;")
 
+        touch.is_dragging = False
+        touch.is_scrolling = False
+        self.touches.append(touch)
         touch.grab(self)
-        y = self.height-touch.pos[1] + self.pos[1]
-        x = touch.x - self.pos[0]
-        self.browser.SendMouseClickEvent(
-            x,
-            y,
-            cefpython.MOUSEBUTTON_LEFT,
-            mouseUp=False,
-            clickCount=1
-        )
+
         return True
 
     def on_touch_move(self, touch, *kwargs):
         if touch.grab_current is not self:
             return
+
         y = self.height-touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
-        self.browser.SendMouseMoveEvent(x, y, mouseLeave=False)
+
+        if len(self.touches) == 1:
+            # Dragging
+            if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
+                if touch.is_dragging:
+                    self.browser.SendMouseMoveEvent(x, y, mouseLeave=False)
+                else:
+                    self.browser.SendMouseClickEvent(x, y, cefpython.MOUSEBUTTON_LEFT,
+                                                     mouseUp=False, clickCount=1)
+                    touch.is_dragging = True
+        elif len(self.touches) == 2:
+            # Scroll only if a given distance is passed once (could be right click)
+            touch1, touch2 = self.touches[:2]
+            dx = touch2.dx / 2. + touch1.dx / 2.
+            dy = touch2.dy / 2. + touch1.dy / 2.
+            if (abs(dx) > 5 or abs(dy) > 5) or touch.is_scrolling:
+                # Scrolling
+                touch.is_scrolling = True
+                self.browser.SendMouseWheelEvent(touch.x, self.height-touch.pos[1], dx, -dy)
         return True
 
     def on_touch_up(self, touch, *kwargs):
         if touch.grab_current is not self:
             return
+
         y = self.height-touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
-        self.browser.SendMouseClickEvent(
-            x,
-            y,
-            cefpython.MOUSEBUTTON_LEFT,
-            mouseUp=True, clickCount=1
-        )
+
+        if len(self.touches) == 2:
+            if not touch.is_scrolling:
+                # Right click (mouse down, mouse up)
+                self.browser.SendMouseClickEvent(x, y, cefpython.MOUSEBUTTON_RIGHT,
+                                                 mouseUp=False, clickCount=1
+                                                 )
+                self.browser.SendMouseClickEvent(x, y, cefpython.MOUSEBUTTON_RIGHT,
+                                                 mouseUp=True, clickCount=1
+                                                 )
+        else:
+            if touch.is_dragging:
+                # Drag end (mouse up)
+                self.browser.SendMouseClickEvent(
+                    x,
+                    y,
+                    cefpython.MOUSEBUTTON_LEFT,
+                    mouseUp=True, clickCount=1
+                )
+            else:
+                # Left click (mouse down, mouse up)
+                count = 1
+                if touch.is_double_tap:
+                    count = 2
+                self.browser.SendMouseClickEvent(
+                    x,
+                    y,
+                    cefpython.MOUSEBUTTON_LEFT,
+                    mouseUp=False, clickCount=count
+                )
+                self.browser.SendMouseClickEvent(
+                    x,
+                    y,
+                    cefpython.MOUSEBUTTON_LEFT,
+                    mouseUp=True, clickCount=count
+                )
+
+        self.touches.remove(touch)
         touch.ungrab(self)
         return True
 

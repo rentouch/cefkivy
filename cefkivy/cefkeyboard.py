@@ -1,3 +1,6 @@
+from kivy.core.window import Window
+from kivy.uix.vkeyboard import VKeyboard
+
 """
 Cef Keyboard Manager.
 Cef Keyboard management is complex, so we outsourced it to this file for
@@ -15,7 +18,7 @@ class CefKeyboardManager():
     is_alt1 = False
     is_alt2 = False
 
-    def __init__ (self, cefpython, *largs, **dargs):
+    def __init__(self, cefpython, *largs, **dargs):
         self.cefpython = cefpython
     
     def reset_all_modifiers(self):
@@ -142,3 +145,21 @@ class CefKeyboardManager():
         if str(keycode) in other_keys_map:
             cef_keycode = other_keys_map[str(keycode)]
         return cef_keycode
+
+
+class FixedKeyboard(VKeyboard):
+    def __init__(self, **kwargs):
+        super(FixedKeyboard, self).__init__(**kwargs)
+
+    def setup_mode_free(self):
+        """Overwrite free function to set fixed pos
+        """
+        self.do_rotation = False
+        self.do_scale = False
+        self.scale = 1.2
+        target = self.target
+        if not target:
+            return
+        self.center_x = Window.width/2
+        self.y = 230
+Window.set_vkeyboard_class(FixedKeyboard)

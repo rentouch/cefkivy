@@ -1,0 +1,109 @@
+# -----------------------------------------------------------------------------
+# JS Dialogs
+# -----------------------------------------------------------------------------
+<JSConfirm@ModalView>:
+    size_hint: None, None
+    size: 400, 150
+    border: 0,0,0,0
+    text: ""
+    js_continue: None
+    background: 'images/popup_bg.png'
+    auto_dismiss: False
+    BoxLayout:
+        spacing: 5
+        padding: 5
+        orientation: "vertical"
+        Label:
+            padding: 5, 5
+            color: 0,0,0,1
+            text: root.text
+            text_size: self.size
+            valign: 'top'
+            halign: 'left'
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+            padding: 5
+            Button:
+                text: "Cancel"
+                on_press:
+                    root.js_continue(False, "")
+                    root.dismiss()
+            Button:
+                text: "Okay"
+                on_press:
+                    root.js_continue(True, "")
+                    root.dismiss()
+
+<JSAlert@ModalView>:
+    size_hint: None, None
+    size: 400, 150
+    border: 0,0,0,0
+    text: ""
+    js_continue: None
+    background: 'images/popup_bg.png'
+    auto_dismiss: False
+    BoxLayout:
+        spacing: 5
+        padding: 5
+        orientation: "vertical"
+        Label:
+            padding: 5, 5
+            color: 0,0,0,1
+            text: root.text
+            text_size: self.size
+            valign: 'top'
+            halign: 'left'
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+            padding: 5
+            Widget:
+            Button:
+                text: "Okay"
+                on_press:
+                    root.js_continue(True, "")
+                    root.dismiss()
+
+<JSPrompt@ModalView>:
+    size_hint: None, None
+    size: 400, 150
+    border: 0,0,0,0
+    text: ""
+    default_prompt_text: ""
+    js_continue: None
+    background: 'images/popup_bg.png'
+    auto_dismiss: False
+    BoxLayout:
+        spacing: 5
+        padding: 5
+        orientation: "vertical"
+        Label:
+            padding: 5, 5
+            color: 0,0,0,1
+            text: root.text
+            text_size: self.size
+            valign: 'top'
+            halign: 'left'
+        TextInput:
+            id: text_input
+            text: root.default_prompt_text
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+            padding: 5
+            Button:
+                text: "Cancel"
+                on_press:
+                    root.js_continue(False, text_input.text)
+                    root.dismiss()
+                    Window.release_all_keyboards()
+            Button:
+                text: "Okay"
+                on_press:
+                    root.js_continue(True, text_input.text)
+                    root.dismiss()
+                    Window.release_all_keyboards()

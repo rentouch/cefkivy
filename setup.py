@@ -20,7 +20,9 @@ setup(name='cefkivy',
       author='Rentouch GmbH',
       author_email='info@rentouch.ch',
       url='http://www.rentouch.ch',
-      
+
+      package_data={'cefkivy': ['images/*.png', '*.kv']},
+
       packages=['cefkivy', ],
 
       install_requires=reqs
