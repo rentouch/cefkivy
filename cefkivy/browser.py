@@ -34,6 +34,7 @@ class CefBrowser(Widget):
     #    control is focused (input type=text|password or textarea).
     keyboard_mode = OptionProperty("local", options=("global", "local"))
     url = StringProperty("about:blank")
+    current_url = StringProperty("")
     resources_dir = StringProperty("")
     browser = None
     popup = None
@@ -154,11 +155,9 @@ class CefBrowser(Widget):
 
     def on_loading_state_change(self, isLoading, canGoBack, canGoForward):
         self.is_loading = isLoading
-        pass
 
     def on_address_change(self, frame, url):
-        self.url = url
-        pass
+        self.current_url = url
 
     def on_title_change(self, newTitle):
         pass
