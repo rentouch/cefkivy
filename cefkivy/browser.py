@@ -253,6 +253,7 @@ class CefBrowser(Widget):
 
         touch.is_dragging = False
         touch.is_scrolling = False
+        touch.is_right_click = False
         self.touches.append(touch)
         touch.grab(self)
 
@@ -295,6 +296,7 @@ class CefBrowser(Widget):
         if len(self.touches) == 2:
             if not touch.is_scrolling:
                 # Right click (mouse down, mouse up)
+                self.touches[0].is_right_click = self.touches[1].is_right_click = True
                 self.browser.SendMouseClickEvent(x, y, cefpython.MOUSEBUTTON_RIGHT,
                                                  mouseUp=False, clickCount=1
                                                  )
@@ -310,7 +312,7 @@ class CefBrowser(Widget):
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=1
                 )
-            else:
+            elif not touch.is_right_click:
                 # Left click (mouse down, mouse up)
                 count = 1
                 if touch.is_double_tap:
