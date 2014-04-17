@@ -83,7 +83,7 @@ class CefBrowser(Widget):
         settings = {
                     #"debug": True,
                     "log_severity": cefpython.LOGSEVERITY_INFO,
-                    "log_file": "debug.log",
+                    #"log_file": "debug.log",
                     "persist_session_cookies": True,
                     "release_dcheck_enabled": True,  # Enable only when debugging.
                     "locales_dir_path": os.path.join(md, "locales"),
