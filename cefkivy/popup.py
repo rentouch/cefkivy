@@ -20,8 +20,14 @@ import os
 resources.resource_add_path(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 Builder.load_file(resources.resource_find("popup.kv"))
 
+RESOURCE_DIR = ""
+
 
 class PopupBrowser(CefBrowser):
+
+    def __init__(self, **kwargs):
+        super(PopupBrowser, self).__init__(resources_dir=RESOURCE_DIR, **kwargs)
+
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
             return
@@ -84,7 +90,12 @@ class PopupBrowser(CefBrowser):
 
 class PopupController(object):
 
-    def __init__(self):
+    def __init__(self, resource_dir=None):
+        # Define data path
+        if resource_dir:
+            global RESOURCE_DIR
+            RESOURCE_DIR = resource_dir
+
         # Create popup
         self.popup = Factory.CEFPopup()
         self.popup.bind(on_dismiss=self.on_close_popup)
