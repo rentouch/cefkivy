@@ -478,7 +478,7 @@ class ClientHandler():
                     }
                     var tag = element.tagName.toUpperCase();
                     var type = element.type;
-                    if (tag == "INPUT" && (type == "" || type == "text"
+                    if (tag == "INPUT" && (type == "" || type == "text" || type == "email"
                             || type == "password") || tag == "TEXTAREA") {
                         if (!__kivy__keyboard_requested) {
                             __kivy__request_keyboard();
