@@ -41,6 +41,9 @@ class CefBrowser(Widget):
     touches = []
     is_loading = BooleanProperty(True)
 
+    _reset_js_bindings = False  # See set_js_bindings()
+    _js_bindings = None  # See set_js_bindings()
+
     def __init__(self, *largs, **dargs):
         super(CefBrowser, self).__init__()
         self.url = dargs.get("url", "")
@@ -104,12 +107,35 @@ class CefBrowser(Widget):
         self.browser.SendFocusEvent(True)
         ch = ClientHandler(self)
         self.browser.SetClientHandler(ch)
+        self.set_js_bindings()
         self.browser.WasResized()
         self.bind(size=self.realign)
         self.bind(pos=self.realign)
         self.bind(keyboard_mode=self.set_keyboard_mode)
         if self.keyboard_mode == "global":
             self.request_keyboard()
+
+    def set_js_bindings(self):
+        # Needed to introduce set_js_bindings again because the freeze of sites at load took over.
+        # As an example 'http://www.htmlbasix.com/popup.shtml' freezed every time. By setting the js
+        # bindings again, the freeze rate is at about 35%. Check git to see how it was done, before using
+        # this function ...
+        # I (jegger) have to be honest, that I don't have a clue why this is acting like it does!
+        # I hope simon (REN-840) can resolve this once in for all...
+        #
+        # ORIGINAL COMMENT:
+        # When browser.Navigate() is called, some bug appears in CEF
+        # that makes CefRenderProcessHandler::OnBrowserDestroyed()
+        # is being called. This destroys the javascript bindings in
+        # the Render process. We have to make the js bindings again,
+        # after the call to Navigate() when OnLoadingStateChange()
+        # is called with isLoading=False. Problem reported here:
+        # http://www.magpcss.org/ceforum/viewtopic.php?f=6&t=11009
+        if not self._js_bindings:
+            self._js_bindings = cefpython.JavascriptBindings(bindToFrames=True, bindToPopups=True)
+            self._js_bindings.SetFunction("__kivy__request_keyboard", self.request_keyboard)
+            self._js_bindings.SetFunction("__kivy__release_keyboard", self.release_keyboard)
+        self.browser.SetJavascriptBindings(self._js_bindings)
 
     def realign(self, *largs):
         ts = self.texture.size
@@ -145,6 +171,7 @@ class CefBrowser(Widget):
     def on_url(self, instance, value):
         if self.browser and value:
             self.browser.Navigate(self.url)
+            self._reset_js_bindings = True
 
     def set_keyboard_mode(self, *largs):
         if self.keyboard_mode == "global":
@@ -385,6 +412,14 @@ class ClientHandler():
 
     def OnLoadingStateChange(self, browser, isLoading, canGoBack, canGoForward):
         self.browser_widget.dispatch("on_loading_state_change", isLoading, canGoBack, canGoForward)
+        bw = self.browser_widget
+        if bw._reset_js_bindings and not isLoading:
+            if bw:
+                bw.set_js_bindings()
+        if isLoading and bw \
+                and bw.keyboard_mode == "local":
+            # Release keyboard when navigating to a new page.
+            bw.release_keyboard()
 
     def OnAddressChange(self, browser, frame, url):
         self.browser_widget.dispatch("on_address_change", frame, url)
@@ -434,12 +469,6 @@ class ClientHandler():
         self.browser_widget.dispatch("on_load_start", frame)
         bw = self.browser_widget
         if bw and bw.keyboard_mode == "local":
-            # The logic is similar to the one found in kivy-berkelium:
-            # https://github.com/kivy/kivy-berkelium/blob/master/berkelium/__init__.py
-            jb = cefpython.JavascriptBindings(bindToFrames=True, bindToPopups=True)
-            jb.SetFunction("__kivy__request_keyboard", self.browser_widget.request_keyboard)
-            jb.SetFunction("__kivy__release_keyboard", self.browser_widget.release_keyboard)
-            self.browser_widget.browser.SetJavascriptBindings(jb)
             jsCode = """
                 var __kivy__keyboard_requested = false;
                 function __kivy__keyboard_interval() {
