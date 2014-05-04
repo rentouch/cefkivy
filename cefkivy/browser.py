@@ -179,7 +179,6 @@ class CefBrowser(Widget):
             self.request_keyboard()
         else:
             self.release_keyboard()
-            self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__keyboard_requested = false;")
 
     def on_loading_state_change(self, isLoading, canGoBack, canGoForward):
         self.is_loading = isLoading
@@ -230,25 +229,28 @@ class CefBrowser(Widget):
         if shown:
             self.request_keyboard()
             kb = self.__keyboard.widget
-            x = self.x+rect[0]+(rect[2]-kb.width*kb.scale)/2
-            y = self.height+self.y-rect[1]-rect[3]-kb.height*kb.scale
-            if y<0:
-                rightx = self.x+rect[0]+rect[2]
-                spleft = self.x+rect[0]
-                spright = Window.width-rightx
-                y = 0
-                if kb.width*kb.scale<=spright:
-                    x = rightx
-                elif kb.width*kb.scale<=spleft:
-                    x = spleft-kb.width*kb.scale
-                else:
-                    x = rightx
+            if len(rect)<4:
+                kb.pos = ((Window.width-kb.width*kb.scale)/2, 10)
             else:
-                if x<0:
-                    x = 0
-                elif Window.width<x+kb.width*kb.scale:
-                    x = Window.width-kb.width*kb.scale
-            kb.pos = (x, y)
+                x = self.x+rect[0]+(rect[2]-kb.width*kb.scale)/2
+                y = self.height+self.y-rect[1]-rect[3]-kb.height*kb.scale
+                if y<0:
+                    rightx = self.x+rect[0]+rect[2]
+                    spleft = self.x+rect[0]
+                    spright = Window.width-rightx
+                    y = 0
+                    if kb.width*kb.scale<=spright:
+                        x = rightx
+                    elif kb.width*kb.scale<=spleft:
+                        x = spleft-kb.width*kb.scale
+                    else:
+                        x = rightx
+                else:
+                    if x<0:
+                        x = 0
+                    elif Window.width<x+kb.width*kb.scale:
+                        x = Window.width-kb.width*kb.scale
+                kb.pos = (x, y)
         else:
             self.release_keyboard()
 
@@ -304,7 +306,6 @@ class CefBrowser(Widget):
             self.request_keyboard()
         else:
             Window.release_all_keyboards()
-            self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__keyboard_requested = false;")
 
         touch.is_dragging = False
         touch.is_scrolling = False
@@ -497,10 +498,13 @@ class ClientHandler():
         self.browser_widget.dispatch("on_load_start", frame)
         bw = self.browser_widget
         if bw and bw.keyboard_mode == "local":
+            lrectconstruct = "var rect = e.target.getBoundingClientRect();var lrect = [rect.left, rect.top, rect.width, rect.height];"
+            if frame.GetParent():
+                print frame, "hasParent"
+                lrectconstruct = "var lrect = [];"
             jsCode = """
 window.addEventListener("click", function (e) {
-    var rect = e.target.getBoundingClientRect();
-    var lrect = [rect.left, rect.top, rect.width, rect.height];
+    """+lrectconstruct+"""
     if (e.target.tagName.toUpperCase()=="INPUT" && ["text", "email", "password"].indexOf(e.target.type)!=-1) {
         __kivy__keyboard_update(true, lrect);
     } else {
