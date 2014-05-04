@@ -133,8 +133,9 @@ class CefBrowser(Widget):
         # http://www.magpcss.org/ceforum/viewtopic.php?f=6&t=11009
         if not self._js_bindings:
             self._js_bindings = cefpython.JavascriptBindings(bindToFrames=True, bindToPopups=True)
-            self._js_bindings.SetFunction("__kivy__request_keyboard", self.request_keyboard)
-            self._js_bindings.SetFunction("__kivy__release_keyboard", self.release_keyboard)
+            self._js_bindings.SetFunction("__kivy__keyboard_update", self.keyboard_update)
+            #self._js_bindings.SetFunction("__kivy__request_keyboard", self.request_keyboard)
+            #self._js_bindings.SetFunction("__kivy__release_keyboard", self.release_keyboard)
         self.browser.SetJavascriptBindings(self._js_bindings)
 
     def realign(self, *largs):
@@ -223,6 +224,33 @@ class CefBrowser(Widget):
             self.dispatch("on_certificate_error")
 
     __keyboard = None
+
+    def keyboard_update(self, shown, rect):
+        print "keyboard_update", shown, rect
+        if shown:
+            self.request_keyboard()
+            kb = self.__keyboard.widget
+            x = self.x+rect[0]+(rect[2]-kb.width*kb.scale)/2
+            y = self.height+self.y-rect[1]-rect[3]-kb.height*kb.scale
+            if y<0:
+                rightx = self.x+rect[0]+rect[2]
+                spleft = self.x+rect[0]
+                spright = Window.width-rightx
+                y = 0
+                if kb.width*kb.scale<=spright:
+                    x = rightx
+                elif kb.width*kb.scale<=spleft:
+                    x = spleft-kb.width*kb.scale
+                else:
+                    x = rightx
+            else:
+                if x<0:
+                    x = 0
+                elif Window.width<x+kb.width*kb.scale:
+                    x = Window.width-kb.width*kb.scale
+            kb.pos = (x, y)
+        else:
+            self.release_keyboard()
 
     def request_keyboard(self):
         if not self.__keyboard:
@@ -470,37 +498,29 @@ class ClientHandler():
         bw = self.browser_widget
         if bw and bw.keyboard_mode == "local":
             jsCode = """
-                var __kivy__keyboard_requested = false;
-                function __kivy__keyboard_interval() {
-                    var element = document.activeElement;
-                    if (!element) {
-                        return;
-                    }
-                    var tag = element.tagName.toUpperCase();
-                    var type = element.type;
-                    if (tag == "INPUT" && (type == "" || type == "text" || type == "email"
-                            || type == "password") || tag == "TEXTAREA") {
-                        if (!__kivy__keyboard_requested) {
-                            __kivy__request_keyboard();
-                            __kivy__keyboard_requested = true;
-                        }
-                        return;
-                    }
-                    if (__kivy__keyboard_requested) {
-                        __kivy__release_keyboard();
-                        __kivy__keyboard_requested = false;
-                    }
-                }
-                function __kivy__on_escape() {
-                    if (document.activeElement) {
-                        document.activeElement.blur();
-                    }
-                    if (__kivy__keyboard_requested) {
-                        __kivy__release_keyboard();
-                        __kivy__keyboard_requested = false;
-                    }
-                }
-                setInterval(__kivy__keyboard_interval, 100);
+window.addEventListener("click", function (e) {
+    var rect = e.target.getBoundingClientRect();
+    var lrect = [rect.left, rect.top, rect.width, rect.height];
+    if (e.target.tagName.toUpperCase()=="INPUT" && ["text", "email", "password"].indexOf(e.target.type)!=-1) {
+        __kivy__keyboard_update(true, lrect);
+    } else {
+        var elem = e.target;
+        while (true) {
+            var ce = elem.getAttribute("contenteditable");
+            if (ce=="true") {
+                __kivy__keyboard_update(true, lrect);
+                return;
+            } else if (ce=="false") {
+                __kivy__keyboard_update(false, lrect);
+                return;
+            } else {
+                if (!elem.parentElement) break;
+                elem = elem.parentElement;
+            }
+        }
+        __kivy__keyboard_update(false, lrect);
+    }
+}, true);
             """
             frame.ExecuteJavascript(jsCode)
 
@@ -599,7 +619,12 @@ class ClientHandler():
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            return CefBrowser(url="http://kivy.org")
+            cb = CefBrowser(url="https://doc.mps-cg.com")
+            w = Widget()
+            w.add_widget(cb)
+            cb.pos = (100,10)
+            cb.size = (1720, 480)
+            return w
 
     CefApp().run()
 
