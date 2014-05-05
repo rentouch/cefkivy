@@ -56,10 +56,17 @@ class CefKeyboardManager():
         # Convert every other key to it's utf8 int value and send this as the key
         if cef_key_code == keycode[0] and text:
             cef_key_code = ord(text)
+            # We have to convert the apostrophes as the utf8 key-code somehow don't get recognized by cef
+            if cef_key_code == 96:
+                cef_key_code = 39
+            if cef_key_code == 8220:
+                cef_key_code = 34
             event_type = self.cefpython.KEYEVENT_CHAR
+
         # When the key is the return key, send it as a KEYEVENT_CHAR as it will not work in textinputs
         if cef_key_code == 65293:
             event_type = self.cefpython.KEYEVENT_CHAR
+
         key_event = {"type": event_type,
                      "native_key_code": cef_key_code,
                      "modifiers": cef_modifiers
