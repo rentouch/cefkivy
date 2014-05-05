@@ -18,8 +18,9 @@ class CefKeyboardManager():
     is_alt1 = False
     is_alt2 = False
 
-    def __init__(self, cefpython, *largs, **dargs):
+    def __init__(self, cefpython, browser_widget, *largs, **dargs):
         self.cefpython = cefpython
+        self.browser_widget = browser_widget
     
     def reset_all_modifiers(self):
         self.is_shift1 = False
@@ -32,10 +33,9 @@ class CefKeyboardManager():
     def kivy_on_key_down(self, browser, keyboard, keycode, text, modifiers):
         #print "\non_key_down:", keycode, text, modifiers
         if keycode[0] == 27:
-            # On escape release the keyboard, see the injected
-            # javascript in OnLoadStart().
-            browser.GetFocusedFrame().ExecuteJavascript(
-                    "__kivy__on_escape()")
+            # On escape release the keyboard
+            browser.GetFocusedFrame().ExecuteJavascript("__kivy__on_escape()")
+            self.browser_widget.release_keyboard()
             return
 
         cef_modifiers = self.cefpython.EVENTFLAG_NONE

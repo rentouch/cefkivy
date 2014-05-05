@@ -64,7 +64,7 @@ class CefBrowser(Widget):
         self.register_event_type("on_js_dialog")
         self.register_event_type("on_before_unload_dialog")
 
-        self.key_manager = CefKeyboardManager(cefpython=cefpython)
+        self.key_manager = CefKeyboardManager(cefpython=cefpython, browser_widget=self)
 
         self.texture = Texture.create(size=self.size, colorfmt='rgba', bufferfmt='ubyte')
         self.texture.flip_vertical()
@@ -134,8 +134,6 @@ class CefBrowser(Widget):
         if not self._js_bindings:
             self._js_bindings = cefpython.JavascriptBindings(bindToFrames=True, bindToPopups=True)
             self._js_bindings.SetFunction("__kivy__keyboard_update", self.keyboard_update)
-            #self._js_bindings.SetFunction("__kivy__request_keyboard", self.request_keyboard)
-            #self._js_bindings.SetFunction("__kivy__release_keyboard", self.release_keyboard)
         self.browser.SetJavascriptBindings(self._js_bindings)
 
     def realign(self, *largs):
@@ -225,30 +223,29 @@ class CefBrowser(Widget):
     __keyboard = None
 
     def keyboard_update(self, shown, rect):
-        print "keyboard_update", shown, rect
         if shown:
             self.request_keyboard()
             kb = self.__keyboard.widget
-            if len(rect)<4:
+            if len(rect) < 4:
                 kb.pos = ((Window.width-kb.width*kb.scale)/2, 10)
             else:
                 x = self.x+rect[0]+(rect[2]-kb.width*kb.scale)/2
                 y = self.height+self.y-rect[1]-rect[3]-kb.height*kb.scale
-                if y<0:
+                if y < 0:
                     rightx = self.x+rect[0]+rect[2]
                     spleft = self.x+rect[0]
                     spright = Window.width-rightx
                     y = 0
-                    if kb.width*kb.scale<=spright:
+                    if kb.width*kb.scale <= spright:
                         x = rightx
-                    elif kb.width*kb.scale<=spleft:
+                    elif kb.width*kb.scale <= spleft:
                         x = spleft-kb.width*kb.scale
                     else:
                         x = rightx
                 else:
-                    if x<0:
+                    if x < 0:
                         x = 0
-                    elif Window.width<x+kb.width*kb.scale:
+                    elif Window.width < x+kb.width*kb.scale:
                         x = Window.width-kb.width*kb.scale
                 kb.pos = (x, y)
         else:
@@ -256,8 +253,7 @@ class CefBrowser(Widget):
 
     def request_keyboard(self):
         if not self.__keyboard:
-            self.__keyboard = EventLoop.window.request_keyboard(
-                    self.release_keyboard, self)
+            self.__keyboard = EventLoop.window.request_keyboard(self.release_keyboard, self)
             self.__keyboard.bind(on_key_down=self.on_key_down)
             self.__keyboard.bind(on_key_up=self.on_key_up)
         self.key_manager.reset_all_modifiers()
@@ -265,14 +261,13 @@ class CefBrowser(Widget):
         # (some earlier bug), but it shouldn't hurt to call it.
         self.browser.SendFocusEvent(True)
 
-    def release_keyboard(self):
+    def release_keyboard(self, *kwargs):
         # When using local keyboard mode, do all the request
         # and releases of the keyboard through js bindings,
         # otherwise some focus problems arise.
         self.key_manager.reset_all_modifiers()
         if not self.__keyboard:
             return
-        print("release_keyboard()")
         self.__keyboard.unbind(on_key_down=self.on_key_down)
         self.__keyboard.unbind(on_key_up=self.on_key_up)
         self.__keyboard.release()
@@ -500,7 +495,6 @@ class ClientHandler():
         if bw and bw.keyboard_mode == "local":
             lrectconstruct = "var rect = e.target.getBoundingClientRect();var lrect = [rect.left, rect.top, rect.width, rect.height];"
             if frame.GetParent():
-                print frame, "hasParent"
                 lrectconstruct = "var lrect = [];"
             jsCode = """
 window.addEventListener("click", function (e) {
@@ -525,6 +519,12 @@ window.addEventListener("click", function (e) {
         __kivy__keyboard_update(false, lrect);
     }
 }, true);
+
+function __kivy__on_escape() {
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
+}
             """
             frame.ExecuteJavascript(jsCode)
 
@@ -623,12 +623,12 @@ window.addEventListener("click", function (e) {
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb = CefBrowser(url="https://doc.mps-cg.com")
+            cb = CefBrowser(url="http://google.com")
             w = Widget()
             w.add_widget(cb)
-            cb.pos = (100,10)
-            cb.size = (1720, 480)
-            return w
+            #cb.pos = (100, 10)
+            #cb.size = (1720, 480)
+            return cb
 
     CefApp().run()
 
