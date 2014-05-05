@@ -499,7 +499,9 @@ class ClientHandler():
             jsCode = """
 window.addEventListener("click", function (e) {
     """+lrectconstruct+"""
-    if (e.target.tagName.toUpperCase()=="INPUT" && ["text", "email", "password"].indexOf(e.target.type)!=-1) {
+    tag = e.target.tagName.toUpperCase()
+    type = e.target.type
+    if (tag=="INPUT" && (["text", "email", "password"].indexOf(type)!=-1) || tag == "TEXTAREA") {
         __kivy__keyboard_update(true, lrect);
     } else {
         var elem = e.target;
@@ -623,7 +625,7 @@ function __kivy__on_escape() {
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb = CefBrowser(url="http://google.com")
+            cb = CefBrowser(url="http://www.rentouch.ch/kontakt/")
             w = Widget()
             w.add_widget(cb)
             #cb.pos = (100, 10)
