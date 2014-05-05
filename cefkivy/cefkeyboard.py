@@ -57,6 +57,9 @@ class CefKeyboardManager():
         if cef_key_code == keycode[0] and text:
             cef_key_code = ord(text)
             event_type = self.cefpython.KEYEVENT_CHAR
+        # When the key is the return key, send it as a KEYEVENT_CHAR as it will not work in textinputs
+        if cef_key_code == 65293:
+            event_type = self.cefpython.KEYEVENT_CHAR
         key_event = {"type": event_type,
                      "native_key_code": cef_key_code,
                      "modifiers": cef_modifiers
