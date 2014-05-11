@@ -236,12 +236,11 @@ class CefBrowser(Widget):
                     spleft = self.x+rect[0]
                     spright = Window.width-rightx
                     y = 0
-                    if kb.width*kb.scale <= spright:
+                    print "SPACES", spleft, spright
+                    if spleft <= spright:
                         x = rightx
-                    elif kb.width*kb.scale <= spleft:
-                        x = spleft-kb.width*kb.scale
                     else:
-                        x = rightx
+                        x = spleft-kb.width*kb.scale
                 else:
                     if x < 0:
                         x = 0
@@ -502,6 +501,8 @@ window.addEventListener("click", function (e) {
     tag = e.target.tagName.toUpperCase()
     type = e.target.type
     if (tag=="INPUT" && (["text", "email", "password"].indexOf(type)!=-1) || tag == "TEXTAREA") {
+        __kivy__keyboard_update(true, lrect);
+    } else if (tag=="TEXTAREA") {
         __kivy__keyboard_update(true, lrect);
     } else {
         var elem = e.target;
