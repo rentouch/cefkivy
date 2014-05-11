@@ -34,7 +34,6 @@ class CefKeyboardManager():
         #print "\non_key_down:", keycode, text, modifiers
         if keycode[0] == 27:
             # On escape release the keyboard
-            browser.GetFocusedFrame().ExecuteJavascript("__kivy__on_escape()")
             self.browser_widget.release_keyboard()
             return
 

@@ -266,6 +266,7 @@ class CefBrowser(Widget):
         self.key_manager.reset_all_modifiers()
         if not self.__keyboard:
             return
+        self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__on_escape()")
         self.__keyboard.unbind(on_key_down=self.on_key_down)
         self.__keyboard.unbind(on_key_up=self.on_key_up)
         self.__keyboard.release()
@@ -297,10 +298,8 @@ class CefBrowser(Widget):
             return
         if self.keyboard_mode == "global":
             self.request_keyboard()
-        #else:
-        #    Window.release_all_keyboards()
-        # TODO: Testen, wofuer die obigen 2 auskommentierten linien gut waren.
-        #     Wieso auskommentiert: mit neuem keyboard_update nicht mehr noetig
+        else:
+           Window.release_all_keyboards()
 
         touch.is_dragging = False
         touch.is_scrolling = False
@@ -497,34 +496,6 @@ class ClientHandler():
             if frame.GetParent():
                 lrectconstruct = "var lrect = [];"
             jsCode = """
-/*
-window.addEventListener("click", function (e) {
-    """+lrectconstruct+"""
-    var tag = e.target.tagName.toUpperCase();
-    var type = e.target.type;
-    if (tag=="INPUT" && (["text", "email", "password"].indexOf(type)!=-1)) {
-        __kivy__keyboard_update(true, lrect);
-    } else if (tag=="TEXTAREA") {
-        __kivy__keyboard_update(true, lrect);
-    } else {
-        var elem = e.target;
-        while (true) {
-            var ce = elem.getAttribute("contenteditable");
-            if (ce=="true") {
-                __kivy__keyboard_update(true, lrect);
-                return;
-            } else if (ce=="false") {
-                __kivy__keyboard_update(false, lrect);
-                return;
-            } else {
-                if (!elem.parentElement) break;
-                elem = elem.parentElement;
-            }
-        }
-        __kivy__keyboard_update(false, lrect);
-    }
-}, true);
-*/
 window.addEventListener("focus", function (e) {
     """+lrectconstruct+"""
     var tag = e.target.tagName.toUpperCase();
