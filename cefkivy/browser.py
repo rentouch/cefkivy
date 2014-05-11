@@ -236,7 +236,6 @@ class CefBrowser(Widget):
                     spleft = self.x+rect[0]
                     spright = Window.width-rightx
                     y = 0
-                    print "SPACES", spleft, spright
                     if spleft <= spright:
                         x = rightx
                     else:
@@ -298,8 +297,10 @@ class CefBrowser(Widget):
             return
         if self.keyboard_mode == "global":
             self.request_keyboard()
-        else:
-            Window.release_all_keyboards()
+        #else:
+        #    Window.release_all_keyboards()
+        # TODO: Testen, wofuer die obigen 2 auskommentierten linien gut waren.
+        #     Wieso auskommentiert: mit neuem keyboard_update nicht mehr noetig
 
         touch.is_dragging = False
         touch.is_scrolling = False
@@ -496,11 +497,12 @@ class ClientHandler():
             if frame.GetParent():
                 lrectconstruct = "var lrect = [];"
             jsCode = """
+/*
 window.addEventListener("click", function (e) {
     """+lrectconstruct+"""
-    tag = e.target.tagName.toUpperCase()
-    type = e.target.type
-    if (tag=="INPUT" && (["text", "email", "password"].indexOf(type)!=-1) || tag == "TEXTAREA") {
+    var tag = e.target.tagName.toUpperCase();
+    var type = e.target.type;
+    if (tag=="INPUT" && (["text", "email", "password"].indexOf(type)!=-1)) {
         __kivy__keyboard_update(true, lrect);
     } else if (tag=="TEXTAREA") {
         __kivy__keyboard_update(true, lrect);
@@ -521,6 +523,20 @@ window.addEventListener("click", function (e) {
         }
         __kivy__keyboard_update(false, lrect);
     }
+}, true);
+*/
+window.addEventListener("focus", function (e) {
+    """+lrectconstruct+"""
+    var tag = e.target.tagName.toUpperCase();
+    var type = e.type;
+    __kivy__keyboard_update(true, lrect);
+}, true);
+
+window.addEventListener("blur", function (e) {
+    """+lrectconstruct+"""
+    var tag = e.target.tagName.toUpperCase();
+    var type = e.type;
+    __kivy__keyboard_update(false, lrect);
 }, true);
 
 function __kivy__on_escape() {
@@ -626,7 +642,7 @@ function __kivy__on_escape() {
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb = CefBrowser(url="http://www.rentouch.ch/kontakt/")
+            cb = CefBrowser(url="http://mindmeister.com")
             w = Widget()
             w.add_widget(cb)
             #cb.pos = (100, 10)
@@ -636,3 +652,4 @@ if __name__ == '__main__':
     CefApp().run()
 
     cefpython.Shutdown()
+
