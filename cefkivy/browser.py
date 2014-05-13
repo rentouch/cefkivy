@@ -296,6 +296,11 @@ class CefBrowser(Widget):
     def on_touch_down(self, touch, *kwargs):
         if not self.collide_point(*touch.pos):
             return
+
+        # Do not support more than two touches!
+        if len(self.touches) > 2:
+            return
+
         if self.keyboard_mode == "global":
             self.request_keyboard()
         else:
@@ -304,6 +309,8 @@ class CefBrowser(Widget):
         touch.is_dragging = False
         touch.is_scrolling = False
         touch.is_right_click = False
+        touch.start_pos = touch.pos
+        touch.last_pos = touch.pos
         self.touches.append(touch)
         touch.grab(self)
 
@@ -313,26 +320,42 @@ class CefBrowser(Widget):
         if touch.grab_current is not self:
             return
 
-        y = self.height-touch.pos[1] + self.pos[1]
         x = touch.x - self.pos[0]
+        y = self.height-touch.y + self.pos[1]
+
+        x_start = touch.start_pos[0] - self.pos[0]
+        y_start = self.height-touch.start_pos[1] + self.pos[1]
+
+        dx_start = touch.start_pos[0]-touch.x  # Delta since touch down
+        dy_start = touch.start_pos[1]-touch.y
 
         if len(self.touches) == 1:
-            # Dragging
-            if (abs(touch.dx) > 5 or abs(touch.dy) > 5) or touch.is_dragging:
-                if touch.is_dragging:
-                    self.browser.SendMouseMoveEvent(x, y, mouseLeave=False)
-                else:
-                    self.browser.SendMouseClickEvent(x, y, cefpython.MOUSEBUTTON_LEFT,
-                                                     mouseUp=False, clickCount=1)
-                    touch.is_dragging = True
+            if not touch.is_scrolling or touch.is_right_click:
+                # Dragging
+                if (abs(dx_start) > 5 or abs(dy_start) > 5) or touch.is_dragging:
+                    if touch.is_dragging:
+                        self.browser.SendMouseMoveEvent(x, y, mouseLeave=False)
+                        touch.last_pos = (x, y)
+                    else:
+                        self.browser.SendMouseClickEvent(x_start, y_start, cefpython.MOUSEBUTTON_LEFT,
+                                                         mouseUp=False, clickCount=1)
+                        touch.last_pos = (x_start, y_start)
+                        touch.is_dragging = True
+
         elif len(self.touches) == 2:
             # Scroll only if a given distance is passed once (could be right click)
             touch1, touch2 = self.touches[:2]
             dx = touch2.dx / 2. + touch1.dx / 2.
             dy = touch2.dy / 2. + touch1.dy / 2.
             if (abs(dx) > 5 or abs(dy) > 5) or touch.is_scrolling:
-                # Scrolling
-                touch.is_scrolling = True
+                # Check all touches for certain states (like one my be currently draging)
+                for _touch in self.touches:
+                    if _touch.is_dragging:  # End the drag event by releasing the mouse button
+                        self.browser.SendMouseClickEvent(_touch.last_pos[0], _touch.last_pos[1],
+                                                         cefpython.MOUSEBUTTON_LEFT, mouseUp=True, clickCount=1)
+                        _touch.is_dragging = False
+                    # Set touch state to scrolling
+                    _touch.is_scrolling = True
                 self.browser.SendMouseWheelEvent(touch.x, self.height-touch.pos[1], dx, -dy)
         return True
 
@@ -357,12 +380,11 @@ class CefBrowser(Widget):
             if touch.is_dragging:
                 # Drag end (mouse up)
                 self.browser.SendMouseClickEvent(
-                    x,
-                    y,
+                    touch.last_pos[0], touch.last_pos[1],
                     cefpython.MOUSEBUTTON_LEFT,
                     mouseUp=True, clickCount=1
                 )
-            elif not touch.is_right_click:
+            elif not touch.is_right_click and not touch.is_scrolling:
                 # Left click (mouse down, mouse up)
                 count = 1
                 if touch.is_double_tap:
