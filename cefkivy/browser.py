@@ -49,6 +49,7 @@ class CefBrowser(Widget):
         self.url = dargs.get("url", "")
         self.keyboard_mode = dargs.get("keyboard_mode", "local")
         self.resources_dir = dargs.get("resources_dir", "")
+        switches = dargs.get("switches", {})
         self.__rect = None
         self.browser = None
         self.popup = CefBrowserPopup(self)
@@ -93,7 +94,7 @@ class CefBrowser(Widget):
                     "locales_dir_path": os.path.join(md, "locales"),
                     "browser_subprocess_path": "%s/%s" % (cefpython.GetModuleDirectory(), "subprocess")
                 }
-        cefpython.Initialize(settings)
+        cefpython.Initialize(settings, switches)
 
         windowInfo = cefpython.WindowInfo()
         windowInfo.SetAsOffscreen(0)
