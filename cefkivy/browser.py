@@ -3,17 +3,25 @@ import ctypes
 import sys
 import os
 
-libcef_so = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'libcef.so')
-if os.path.exists(libcef_so):
-    # Import local module
-    ctypes.CDLL(libcef_so, ctypes.RTLD_GLOBAL)
-    if 0x02070000 <= sys.hexversion < 0x03000000:
-        import cefpython_py27 as cefpython
-    else:
-        raise Exception("Unsupported python version: %s" % sys.version)
-else:
+# Import local module
+if 0x02070000 <= sys.hexversion < 0x03000000:
+    print "Searching for cefpython in PYTHONPATH..."
+    for path in sys.path:
+        libcef_so = os.path.join(path, 'libcef.so')
+        if os.path.exists(libcef_so):
+            try:
+                ctypes.CDLL(libcef_so, ctypes.RTLD_GLOBAL)
+                import cefpython_py27 as cefpython
+                print "cefpython imported from "+path
+                break
+            except:
+                print libcef_so+" exists, but failed to import cefpython"
+try:
+    cefpython
+except:
     # Import from package
     from cefpython3 import cefpython
+    print "cefpython imported from package"
 
 
 from kivy.app import App
@@ -22,7 +30,7 @@ from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
 from kivy.properties import *
 from kivy.uix.widget import Widget
-from cefkivy.cefkeyboard import CefKeyboardManager
+from cefkeyboard import CefKeyboardManager
 from kivy.clock import Clock
 from kivy.core.window import Window
 
@@ -85,6 +93,8 @@ class CefBrowser(Widget):
             cefpython.MessageLoopWork()
         Clock.schedule_interval(cef_loop, 0)
 
+        wd = os.getcwd()
+        os.chdir(cefpython.GetModuleDirectory())
         settings = {
                     #"debug": True,
                     "log_severity": cefpython.LOGSEVERITY_INFO,
@@ -94,7 +104,9 @@ class CefBrowser(Widget):
                     "locales_dir_path": os.path.join(md, "locales"),
                     "browser_subprocess_path": "%s/%s" % (cefpython.GetModuleDirectory(), "subprocess")
                 }
+        print os.environ["PATH"], settings["browser_subprocess_path"]
         cefpython.Initialize(settings, switches)
+        os.chdir(wd)
 
         windowInfo = cefpython.WindowInfo()
         windowInfo.SetAsOffscreen(0)
@@ -614,7 +626,7 @@ function __kivy__on_escape() {
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb = CefBrowser(url="http://mindmeister.com")
+            cb = CefBrowser(url='http://jegger.ch/datapool/app/test.html')
             w = Widget()
             w.add_widget(cb)
             #cb.pos = (100, 10)
