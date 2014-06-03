@@ -35,6 +35,34 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 
 
+print "####################### START CEF ############################"
+def cef_loop(*largs):
+    cefpython.MessageLoopWork()
+Clock.schedule_interval(cef_loop, 0)
+
+md = cefpython.GetModuleDirectory()
+settings = {
+    #"debug": True,
+    "log_severity": cefpython.LOGSEVERITY_INFO,
+    #"log_file": "debug.log",
+    "persist_session_cookies": True,
+    "release_dcheck_enabled": True,  # Enable only when debugging.
+    "locales_dir_path": os.path.join(md, "locales"),
+    "browser_subprocess_path": "%s/%s" % (cefpython.GetModuleDirectory(), "subprocess")
+}
+switches = {
+}
+wd = os.getcwd()
+os.chdir(cefpython.GetModuleDirectory())
+print os.environ["PATH"], settings["browser_subprocess_path"]
+cefpython.Initialize(settings, switches)
+os.chdir(wd)
+
+cookie_manager = cefpython.CookieManager.GetGlobalManager()
+cookie_path = os.path.join(md, "cookies")
+cookie_manager.SetStoragePath(cookie_path, True)
+
+
 class CefBrowser(Widget):
     # Keyboard mode: "global" or "local".
     # 1. Global mode forwards keys to CEF all the time.
@@ -43,7 +71,6 @@ class CefBrowser(Widget):
     keyboard_mode = OptionProperty("local", options=("global", "local"))
     url = StringProperty("about:blank")
     current_url = StringProperty("")
-    resources_dir = StringProperty("")
     browser = None
     popup = None
     touches = []
@@ -56,10 +83,8 @@ class CefBrowser(Widget):
         super(CefBrowser, self).__init__()
         self.url = dargs.get("url", "")
         self.keyboard_mode = dargs.get("keyboard_mode", "local")
-        self.resources_dir = dargs.get("resources_dir", "")
-        switches = dargs.get("switches", {})
         self.__rect = None
-        self.browser = None
+        self.browser = dargs.get("browser", None)
         self.popup = CefBrowserPopup(self)
 
         self.register_event_type("on_loading_state_change")
@@ -81,45 +106,14 @@ class CefBrowser(Widget):
             Color(1, 1, 1)
             self.__rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
 
-        md = cefpython.GetModuleDirectory()
+        if not self.browser:
+            windowInfo = cefpython.WindowInfo()
+            windowInfo.SetAsOffscreen(0)
+            self.browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
+            self.browser.SetClientHandler(client_handler)
 
-        # Determine if default resources dir should be used or a custom
-        if self.resources_dir:
-            resources = self.resources_dir
-        else:
-            resources = md
-
-        def cef_loop(*largs):
-            cefpython.MessageLoopWork()
-        Clock.schedule_interval(cef_loop, 0)
-
-        wd = os.getcwd()
-        os.chdir(cefpython.GetModuleDirectory())
-        settings = {
-                    #"debug": True,
-                    "log_severity": cefpython.LOGSEVERITY_INFO,
-                    #"log_file": "debug.log",
-                    "persist_session_cookies": True,
-                    "release_dcheck_enabled": True,  # Enable only when debugging.
-                    "locales_dir_path": os.path.join(md, "locales"),
-                    "browser_subprocess_path": "%s/%s" % (cefpython.GetModuleDirectory(), "subprocess")
-                }
-        print os.environ["PATH"], settings["browser_subprocess_path"]
-        cefpython.Initialize(settings, switches)
-        os.chdir(wd)
-
-        windowInfo = cefpython.WindowInfo()
-        windowInfo.SetAsOffscreen(0)
-        self.browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
-
-        # Set cookie manager
-        cookie_manager = cefpython.CookieManager.GetGlobalManager()
-        cookie_path = os.path.join(resources, "cookies")
-        cookie_manager.SetStoragePath(cookie_path, True)
-
+        client_handler.browser_widgets[self.browser] = self
         self.browser.SendFocusEvent(True)
-        ch = ClientHandler(self)
-        self.browser.SetClientHandler(ch)
         self.set_js_bindings()
         self.browser.WasResized()
         self.bind(size=self.realign)
@@ -441,14 +435,14 @@ class CefBrowserPopup(Widget):
 
 
 class ClientHandler():
-    def __init__(self, browserWidget):
-        self.browser_widget = browserWidget
+    def __init__(self, *largs):
+        self.browser_widgets = {}
 
     # DisplayHandler
 
     def OnLoadingStateChange(self, browser, isLoading, canGoBack, canGoForward):
-        self.browser_widget.dispatch("on_loading_state_change", isLoading, canGoBack, canGoForward)
-        bw = self.browser_widget
+        bw = self.browser_widgets[browser]
+        bw.dispatch("on_loading_state_change", isLoading, canGoBack, canGoForward)
         if bw._reset_js_bindings and not isLoading:
             if bw:
                 bw.set_js_bindings()
@@ -458,10 +452,10 @@ class ClientHandler():
             bw.release_keyboard()
 
     def OnAddressChange(self, browser, frame, url):
-        self.browser_widget.dispatch("on_address_change", frame, url)
+        self.browser_widgets[browser].dispatch("on_address_change", frame, url)
 
     def OnTitleChange(self, browser, newTitle):
-        self.browser_widget.dispatch("on_title_change", newTitle)
+        self.browser_widgets[browser].dispatch("on_title_change", newTitle)
 
     def OnTooltip(self, *largs):
         return True
@@ -478,11 +472,11 @@ class ClientHandler():
 
     # JavascriptContextHandler
     def OnJSDialog(self, *kwargs):
-        self.browser_widget.dispatch("on_js_dialog", *kwargs)
+        #self.browser_widgets["TODO"].dispatch("on_js_dialog", *kwargs)
         return True
 
     def OnBeforeUnloadDialog(self, *kwargs):
-        self.browser_widget.dispatch("on_before_unload_dialog", *kwargs)
+        #self.browser_widgets["TODO"].dispatch("on_before_unload_dialog", *kwargs)
         return True
 
     # KeyboardHandler
@@ -495,15 +489,35 @@ class ClientHandler():
 
     # LifeSpanHandler
 
-    def OnBeforePopup(self, *kwargs):
-        self.browser_widget.dispatch("on_before_popup", *kwargs)
-        return True
+    def OnBeforePopup(self, browser, frame, targetUrl, targetFrameName, popupFeatures, windowInfo, client, browserSettings, *largs):
+        wi = cefpython.WindowInfo()
+        wi.SetAsChild(0)
+        wi.SetAsOffscreen(0)
+        # This is ugly, but there's no other way i see at this time
+        self._next_popup_url = targetUrl
+        windowInfo.append(wi)
+        browserSettings.append({})
+        return False
+
+    def OnAfterCreated(self, browser, *largs):
+        pw = None
+        for key in self.browser_widgets:
+            pw = self.browser_widgets[key].parent
+            if pw:
+                break
+        cb = CefBrowser(browser=browser)
+        cb.pos = (0, 100)
+        cb.size = (512, 400)
+        pw.add_widget(cb)
+        print cb, self.browser_widgets
+        if hasattr(self, '_next_popup_url'):
+            browser.Navigate(self._next_popup_url)
 
     # LoadHandler
 
     def OnLoadStart(self, browser, frame):
-        self.browser_widget.dispatch("on_load_start", frame)
-        bw = self.browser_widget
+        bw = self.browser_widgets[browser]
+        bw.dispatch("on_load_start", frame)
         if bw and bw.keyboard_mode == "local":
             lrectconstruct = "var rect = e.target.getBoundingClientRect();var lrect = [rect.left, rect.top, rect.width, rect.height];"
             if frame.GetParent():
@@ -532,11 +546,11 @@ function __kivy__on_escape() {
             frame.ExecuteJavascript(jsCode)
 
     def OnLoadEnd(self, browser, frame, httpStatusCode):
-        self.browser_widget.dispatch("on_load_end", frame, httpStatusCode)
+        self.browser_widgets[browser].dispatch("on_load_end", frame, httpStatusCode)
         #largs[0].SetZoomLevel(2.0) # this works at this point
 
     def OnLoadError(self, browser, frame, errorCode, errorText, failedUrl):
-        self.browser_widget.dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
+        self.browser_widgets[browser].dispatch("on_load_error", frame, errorCode, errorText, failedUrl)
 
     def OnRendererProcessTerminated(self, *largs):
         pass
@@ -547,7 +561,7 @@ function __kivy__on_escape() {
         pass
 
     def GetViewRect(self, browser, rect):
-        width, height = self.browser_widget.texture.size
+        width, height = self.browser_widgets[browser].texture.size
         rect.append(0)
         rect.append(0)
         rect.append(width)
@@ -561,17 +575,20 @@ function __kivy__on_escape() {
         pass
 
     def OnPopupShow(self, browser, shown):
-        self.browser_widget.remove_widget(self.browser_widget.popup)
+        bw = self.browser_widgets[browser]
+        bw.remove_widget(bw.popup)
         if shown:
-            self.browser_widget.add_widget(self.browser_widget.popup)
+            bw.add_widget(bw.popup)
 
     def OnPopupSize(self, browser, rect):
-        self.browser_widget.popup.rpos = (rect[0], rect[1])
-        self.browser_widget.popup.size = (rect[2], rect[3])
+        bw = self.browser_widgets[browser]
+        bw.popup.rpos = (rect[0], rect[1])
+        bw.popup.size = (rect[2], rect[3])
 
     def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
+        print "ON PAINT", browser
         b = buf.GetString(mode="bgra", origin="top-left")
-        bw = self.browser_widget
+        bw = self.browser_widgets[browser]
         if paintElementType != cefpython.PET_VIEW:
             if bw.popup.texture.width*bw.popup.texture.height*4!=len(b):
                 return True  # prevent segfault
@@ -623,15 +640,22 @@ function __kivy__on_escape() {
     # RessourceHandler
 
 
+client_handler = ClientHandler()
+
+
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb = CefBrowser(url='http://jegger.ch/datapool/app/test.html')
+            cb1 = CefBrowser(url='http://rentouch.ch')# 'http://jegger.ch/datapool/app/test.html'
+            cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test.html')# 'http://jegger.ch/datapool/app/test.html'
             w = Widget()
-            w.add_widget(cb)
-            #cb.pos = (100, 10)
-            #cb.size = (1720, 480)
-            return cb
+            w.add_widget(cb1)
+            w.add_widget(cb2)
+            cb1.pos = (0,0)
+            cb1.size = (512, 400)
+            cb2.pos = (512,0)
+            cb2.size = (512, 400)
+            return w
 
     CefApp().run()
 
