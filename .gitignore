@@ -1,2 +1,4 @@
 .idea
 *.pyc
+cefkivy/cookies
+debug.log

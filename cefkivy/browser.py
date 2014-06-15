@@ -12,6 +12,7 @@ if 0x02070000 <= sys.hexversion < 0x03000000:
             try:
                 ctypes.CDLL(libcef_so, ctypes.RTLD_GLOBAL)
                 import cefpython_py27 as cefpython
+                os.chdir(cefpython.GetModuleDirectory())
                 print "cefpython imported from "+path
                 break
             except:
@@ -52,11 +53,7 @@ settings = {
 }
 switches = {
 }
-wd = os.getcwd()
-os.chdir(cefpython.GetModuleDirectory())
-print os.environ["PATH"], settings["browser_subprocess_path"]
 cefpython.Initialize(settings, switches)
-os.chdir(wd)
 
 cookie_manager = cefpython.CookieManager.GetGlobalManager()
 cookie_path = os.path.join(md, "cookies")
@@ -493,8 +490,6 @@ class ClientHandler():
         wi = cefpython.WindowInfo()
         wi.SetAsChild(0)
         wi.SetAsOffscreen(0)
-        # This is ugly, but there's no other way i see at this time
-        self._next_popup_url = targetUrl
         windowInfo.append(wi)
         browserSettings.append({})
         return False
@@ -510,8 +505,6 @@ class ClientHandler():
         cb.size = (512, 400)
         pw.add_widget(cb)
         print cb, self.browser_widgets
-        if hasattr(self, '_next_popup_url'):
-            browser.Navigate(self._next_popup_url)
 
     # LoadHandler
 
@@ -647,14 +640,14 @@ if __name__ == '__main__':
     class CefApp(App):
         def build(self):
             cb1 = CefBrowser(url='http://rentouch.ch')# 'http://jegger.ch/datapool/app/test.html'
-            cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test.html')# 'http://jegger.ch/datapool/app/test.html'
+            cb2 = CefBrowser(url='https://rally1.rallydev.com/')# 'http://jegger.ch/datapool/app/test.html'
             w = Widget()
             w.add_widget(cb1)
             w.add_widget(cb2)
             cb1.pos = (0,0)
             cb1.size = (512, 400)
-            cb2.pos = (512,0)
-            cb2.size = (512, 400)
+            cb2.pos = (0,0)
+            cb2.size = (1024, 400)
             return w
 
     CefApp().run()
