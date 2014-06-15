@@ -2,3 +2,4 @@
 *.pyc
 cefkivy/cookies
 debug.log
+venv
