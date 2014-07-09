@@ -97,6 +97,7 @@ class CefBrowser(Widget):
 
         windowInfo = cefpython.WindowInfo()
         windowInfo.SetAsOffscreen(0)
+        cefpython.SetGlobalClientCallback("OnCertificateError", self.OnCertificateError)
         self.browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
 
         # Set cookie manager
