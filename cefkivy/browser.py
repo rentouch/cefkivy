@@ -497,17 +497,26 @@ class ClientHandler():
             if frame.GetParent():
                 lrectconstruct = "var lrect = [];"
             jsCode = """
+function isKeyboardElement(elem) {
+    var tag = elem.tagName.toUpperCase();
+    if (tag=="INPUT") return (["TEXT", "PASSWORD"].indexOf(elem.type.toUpperCase())!=-1);
+    else if (tag=="TEXTAREA") return true;
+    else {
+        var tmp = elem;
+        while (tmp && tmp.contentEditable=="inherit") {
+            tmp = tmp.parentElement;
+        }
+        if (tmp && tmp.contentEditable) return true;
+    }
+    return false;
+}
 window.addEventListener("focus", function (e) {
     """+lrectconstruct+"""
-    var tag = e.target.tagName.toUpperCase();
-    var type = e.type;
-    __kivy__keyboard_update(true, lrect);
+    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect);
 }, true);
 
 window.addEventListener("blur", function (e) {
     """+lrectconstruct+"""
-    var tag = e.target.tagName.toUpperCase();
-    var type = e.type;
     __kivy__keyboard_update(false, lrect);
 }, true);
 
