@@ -499,7 +499,7 @@ class ClientHandler():
             jsCode = """
 function isKeyboardElement(elem) {
     var tag = elem.tagName.toUpperCase();
-    if (tag=="INPUT") return (["TEXT", "PASSWORD"].indexOf(elem.type.toUpperCase())!=-1);
+    if (tag=="INPUT") return (["TEXT", "PASSWORD", "DATE", "DATETIME", "DATETIME-LOCAL", "EMAIL", "MONTH", "NUMBER", "SEARCH", "TEL", "TIME", "URL", "WEEK"].indexOf(elem.type.toUpperCase())!=-1);
     else if (tag=="TEXTAREA") return true;
     else {
         var tmp = elem;
@@ -623,7 +623,7 @@ function __kivy__on_escape() {
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb = CefBrowser(url="http://mindmeister.com")
+            cb = CefBrowser(url="http://jegger.ch/datapool/app/test1.html")
             w = Widget()
             w.add_widget(cb)
             #cb.pos = (100, 10)
