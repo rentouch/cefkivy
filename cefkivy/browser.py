@@ -500,7 +500,7 @@ class ClientHandler():
             jsCode = """
 function isKeyboardElement(elem) {
     var tag = elem.tagName.toUpperCase();
-    if (tag=="INPUT") return (["TEXT", "PASSWORD"].indexOf(elem.type.toUpperCase())!=-1);
+    if (tag=="INPUT") return (["TEXT", "PASSWORD", "NUMBER"].indexOf(elem.type.toUpperCase())!=-1);
     else if (tag=="TEXTAREA") return true;
     else {
         var tmp = elem;
