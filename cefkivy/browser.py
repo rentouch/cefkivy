@@ -12,8 +12,9 @@ if 0x02070000 <= sys.hexversion < 0x03000000:
             try:
                 ctypes.CDLL(libcef_so, ctypes.RTLD_GLOBAL)
                 import cefpython_py27 as cefpython
-                os.chdir(cefpython.GetModuleDirectory())
+                #os.chdir(cefpython.GetModuleDirectory())
                 print "cefpython imported from "+path
+                print cefpython.GetModuleDirectory()
                 break
             except:
                 print libcef_so+" exists, but failed to import cefpython"
@@ -468,6 +469,7 @@ class ClientHandler():
     # DragHandler
 
     # JavascriptContextHandler
+    """
     def OnJSDialog(self, *kwargs):
         #self.browser_widgets["TODO"].dispatch("on_js_dialog", *kwargs)
         return True
@@ -475,6 +477,7 @@ class ClientHandler():
     def OnBeforeUnloadDialog(self, *kwargs):
         #self.browser_widgets["TODO"].dispatch("on_before_unload_dialog", *kwargs)
         return True
+    """
 
     # KeyboardHandler
 
@@ -487,6 +490,7 @@ class ClientHandler():
     # LifeSpanHandler
 
     def OnBeforePopup(self, browser, frame, targetUrl, targetFrameName, popupFeatures, windowInfo, client, browserSettings, *largs):
+        print "On Before Popup"
         wi = cefpython.WindowInfo()
         wi.SetAsChild(0)
         wi.SetAsOffscreen(0)
@@ -495,6 +499,7 @@ class ClientHandler():
         return False
 
     def OnAfterCreated(self, browser, *largs):
+        print "On After Created"
         pw = None
         for key in self.browser_widgets:
             pw = self.browser_widgets[key].parent
@@ -505,6 +510,20 @@ class ClientHandler():
         cb.size = (512, 400)
         pw.add_widget(cb)
         print cb, self.browser_widgets
+
+    def RunModal(self, browser, *largs):
+        print "Run Modal"
+        return False
+
+    def DoClose(self, browser, *largs):
+        print "Do Close", browser
+        bw = self.browser_widgets[browser]
+        bw.parent.remove_widget(bw)
+        del bw
+        return False
+
+    def OnBeforeClose(self, browser, *largs):
+        print "On Before Close"
 
     # LoadHandler
 
@@ -640,7 +659,7 @@ if __name__ == '__main__':
     class CefApp(App):
         def build(self):
             cb1 = CefBrowser(url='http://rentouch.ch')# 'http://jegger.ch/datapool/app/test.html'
-            cb2 = CefBrowser(url='https://rally1.rallydev.com/')# 'http://jegger.ch/datapool/app/test.html'
+            cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test.html')#'https://rally1.rallydev.com/'
             w = Widget()
             w.add_widget(cb1)
             w.add_widget(cb2)
