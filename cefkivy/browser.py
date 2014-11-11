@@ -98,6 +98,7 @@ class CefBrowser(Widget):
 
         windowInfo = cefpython.WindowInfo()
         windowInfo.SetAsOffscreen(0)
+        cefpython.SetGlobalClientCallback("OnCertificateError", self.OnCertificateError)
         self.browser = cefpython.CreateBrowserSync(windowInfo, {}, navigateUrl=self.url)
 
         # Set cookie manager
@@ -267,7 +268,9 @@ class CefBrowser(Widget):
         self.key_manager.reset_all_modifiers()
         if not self.__keyboard:
             return
-        self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__on_escape()")
+        # If we blur the field on keyboard release, jumping between form
+        # fields with tab won't work.
+        # self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__on_escape()")
         self.__keyboard.unbind(on_key_down=self.on_key_down)
         self.__keyboard.unbind(on_key_up=self.on_key_up)
         self.__keyboard.release()
