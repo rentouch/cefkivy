@@ -22,7 +22,7 @@ from kivy.graphics import Color, Rectangle
 from kivy.graphics.texture import Texture
 from kivy.properties import *
 from kivy.uix.widget import Widget
-from cefkivy.cefkeyboard import CefKeyboardManager
+from cefkeyboard import CefKeyboardManager
 from kivy.clock import Clock
 from kivy.core.window import Window
 
