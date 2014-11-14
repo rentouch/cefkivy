@@ -500,6 +500,7 @@ class ClientHandler():
             if frame.GetParent():
                 lrectconstruct = "var lrect = [];"
             jsCode = """
+window.print=function(){console.log("Print dialog blocked")}
 function isKeyboardElement(elem) {
     var tag = elem.tagName.toUpperCase();
     if (tag=="INPUT") return (["TEXT", "PASSWORD", "DATE", "DATETIME", "DATETIME-LOCAL", "EMAIL", "MONTH", "NUMBER", "SEARCH", "TEL", "TIME", "URL", "WEEK"].indexOf(elem.type.toUpperCase())!=-1);
