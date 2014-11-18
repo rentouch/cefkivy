@@ -49,6 +49,7 @@ class CefBrowser(Widget):
         self.url = dargs.get("url", "")
         self.keyboard_mode = dargs.get("keyboard_mode", "local")
         self.resources_dir = dargs.get("resources_dir", "")
+        self.keyboard_above_classes = dargs.get("keyboard_above_classes", [])
         switches = dargs.get("switches", {})
         self.__rect = None
         self.browser = None
@@ -224,7 +225,12 @@ class CefBrowser(Widget):
 
     __keyboard = None
 
-    def keyboard_update(self, shown, rect):
+    def keyboard_update(self, shown, rect, above):
+        """
+        :param shown: Show keyboard if true, hide if false (blur)
+        :param rect: [x,y,width,height] of the input element
+        :param above: show keyboard above input if true
+        """
         if shown:
             self.request_keyboard()
             kb = self.__keyboard.widget
@@ -233,11 +239,27 @@ class CefBrowser(Widget):
             else:
                 x = self.x+rect[0]+(rect[2]-kb.width*kb.scale)/2
                 y = self.height+self.y-rect[1]-rect[3]-kb.height*kb.scale
+                if above:
+                    # If keyboard should displayed above the input field
+                    # Above is good on e.g. search boxes with results displayed
+                    # bellow the input field
+                    y = self.height+self.y-rect[1]
                 if y < 0:
+                    # If keyboard is bellow the window height
                     rightx = self.x+rect[0]+rect[2]
                     spleft = self.x+rect[0]
                     spright = Window.width-rightx
                     y = 0
+                    if spleft <= spright:
+                        x = rightx
+                    else:
+                        x = spleft-kb.width*kb.scale
+                elif y+kb.height*kb.scale > Window.height:
+                    # If keyboard is above the window height
+                    rightx = self.x+rect[0]+rect[2]
+                    spleft = self.x+rect[0]
+                    spright = Window.width-rightx
+                    y = Window.height-kb.height*kb.scale
                     if spleft <= spright:
                         x = rightx
                     else:
@@ -496,6 +518,7 @@ class ClientHandler():
         self.browser_widget.dispatch("on_load_start", frame)
         bw = self.browser_widget
         if bw and bw.keyboard_mode == "local":
+            js_elem_classes = "["+', '.join(['"%s"' % c for c in self.browser_widget.keyboard_above_classes])+"]"
             lrectconstruct = "var rect = e.target.getBoundingClientRect();var lrect = [rect.left, rect.top, rect.width, rect.height];"
             if frame.GetParent():
                 lrectconstruct = "var lrect = [];"
@@ -503,6 +526,7 @@ class ClientHandler():
 window.print=function(){console.log("Print dialog blocked")}
 function isKeyboardElement(elem) {
     var tag = elem.tagName.toUpperCase();
+    //console.log(elem.className)
     if (tag=="INPUT") return (["TEXT", "PASSWORD", "DATE", "DATETIME", "DATETIME-LOCAL", "EMAIL", "MONTH", "NUMBER", "SEARCH", "TEL", "TIME", "URL", "WEEK"].indexOf(elem.type.toUpperCase())!=-1);
     else if (tag=="TEXTAREA") return true;
     else {
@@ -514,14 +538,21 @@ function isKeyboardElement(elem) {
     }
     return false;
 }
+
+function showAboveInput(elem){
+    var classes = """+js_elem_classes+""";
+    return (classes.indexOf(elem.className) > -1);
+}
+
 window.addEventListener("focus", function (e) {
     """+lrectconstruct+"""
-    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect);
+    showAbove = showAboveInput(e.target);
+    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect, showAbove);
 }, true);
 
 window.addEventListener("blur", function (e) {
     """+lrectconstruct+"""
-    __kivy__keyboard_update(false, lrect);
+    __kivy__keyboard_update(false, lrect, false);
 }, true);
 
 function __kivy__on_escape() {
@@ -627,7 +658,8 @@ function __kivy__on_escape() {
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb = CefBrowser(url="http://jegger.ch/datapool/app/test1.html")
+            cb = CefBrowser(url="http://jegger.ch/datapool/app/test1.html",
+                            keyboard_above_classes=["select2-input", ])
             w = Widget()
             w.add_widget(cb)
             #cb.pos = (100, 10)
