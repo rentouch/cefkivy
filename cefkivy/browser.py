@@ -225,12 +225,17 @@ class CefBrowser(Widget):
 
     __keyboard = None
 
-    def keyboard_update(self, shown, rect, above):
+    def keyboard_update(self, shown, rect, class_name):
         """
         :param shown: Show keyboard if true, hide if false (blur)
         :param rect: [x,y,width,height] of the input element
-        :param above: show keyboard above input if true
+        :param class_name: HTML element class
         """
+        # Check if keyboard should get displayed above
+        above = False
+        if class_name in self.keyboard_above_classes:
+            above = True
+
         if shown:
             self.request_keyboard()
             kb = self.__keyboard.widget
@@ -518,7 +523,6 @@ class ClientHandler():
         self.browser_widget.dispatch("on_load_start", frame)
         bw = self.browser_widget
         if bw and bw.keyboard_mode == "local":
-            js_elem_classes = "["+', '.join(['"%s"' % c for c in self.browser_widget.keyboard_above_classes])+"]"
             lrectconstruct = "var rect = e.target.getBoundingClientRect();var lrect = [rect.left, rect.top, rect.width, rect.height];"
             if frame.GetParent():
                 lrectconstruct = "var lrect = [];"
@@ -539,15 +543,9 @@ function isKeyboardElement(elem) {
     return false;
 }
 
-function showAboveInput(elem){
-    var classes = """+js_elem_classes+""";
-    return (classes.indexOf(elem.className) > -1);
-}
-
 window.addEventListener("focus", function (e) {
     """+lrectconstruct+"""
-    showAbove = showAboveInput(e.target);
-    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect, showAbove);
+    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect, e.target.className);
 }, true);
 
 window.addEventListener("blur", function (e) {
