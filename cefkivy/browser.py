@@ -225,18 +225,19 @@ class CefBrowser(Widget):
 
     __keyboard = None
 
-    def keyboard_update(self, shown, rect, class_name):
+    def keyboard_update(self, shown, rect, attributes):
         """
         :param shown: Show keyboard if true, hide if false (blur)
         :param rect: [x,y,width,height] of the input element
-        :param class_name: HTML element class
+        :param attributes: Attributes of HTML element
         """
-        # Check if keyboard should get displayed above
-        above = False
-        if class_name in self.keyboard_above_classes:
-            above = True
-
         if shown:
+            # Check if keyboard should get displayed above
+            above = False
+            if 'class' in attributes:
+                if attributes['class'] in self.keyboard_above_classes:
+                    above = True
+
             self.request_keyboard()
             kb = self.__keyboard.widget
             if len(rect) < 4:
@@ -530,7 +531,6 @@ class ClientHandler():
 window.print=function(){console.log("Print dialog blocked")}
 function isKeyboardElement(elem) {
     var tag = elem.tagName.toUpperCase();
-    //console.log(elem.className)
     if (tag=="INPUT") return (["TEXT", "PASSWORD", "DATE", "DATETIME", "DATETIME-LOCAL", "EMAIL", "MONTH", "NUMBER", "SEARCH", "TEL", "TIME", "URL", "WEEK"].indexOf(elem.type.toUpperCase())!=-1);
     else if (tag=="TEXTAREA") return true;
     else {
@@ -543,14 +543,25 @@ function isKeyboardElement(elem) {
     return false;
 }
 
+function getAttributes(elem){
+    var attributes = {}
+    for (var att, i = 0, atts = elem.attributes, n = atts.length; i < n; i++){
+        att = atts[i];
+        attributes[att.nodeName] = att.nodeValue
+    }
+    return attributes
+}
+
 window.addEventListener("focus", function (e) {
     """+lrectconstruct+"""
-    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect, e.target.className);
+    attributes = getAttributes(e.target)
+    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect, attributes);
 }, true);
 
 window.addEventListener("blur", function (e) {
     """+lrectconstruct+"""
-    __kivy__keyboard_update(false, lrect, false);
+    attributes = getAttributes(e.target)
+    __kivy__keyboard_update(false, lrect, attributes);
 }, true);
 
 function __kivy__on_escape() {
