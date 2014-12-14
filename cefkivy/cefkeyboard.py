@@ -70,7 +70,7 @@ class CefKeyboardManager():
                      "native_key_code": cef_key_code,
                      "modifiers": cef_modifiers
                      }
-        #print("keydown keyEvent: %s" % key_event)
+        print("keydown keyEvent:", key_event, browser)
         browser.SendKeyEvent(key_event)
 
         if keycode[0] == 304:

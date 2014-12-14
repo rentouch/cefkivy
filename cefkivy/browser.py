@@ -56,6 +56,22 @@ switches = {
 }
 cefpython.Initialize(settings, switches)
 
+def OnAfterCreated(browser, *largs):
+    print "On After Created"
+    pw = None
+    for key in client_handler.browser_widgets:
+        print("ONAFTERCREATED", key)
+        pw = client_handler.browser_widgets[key].parent
+        if pw:
+            break
+    #cb = CefBrowser(url=self.popup_url)
+    cb = CefBrowser(browser=browser)
+    cb.pos = (0, 100)
+    cb.size = (512, 400)
+    pw.add_widget(cb)
+    print cb.url, client_handler.browser_widgets
+cefpython.SetGlobalClientCallback("OnAfterCreated", OnAfterCreated)
+
 cookie_manager = cefpython.CookieManager.GetGlobalManager()
 cookie_path = os.path.join(md, "cookies")
 cookie_manager.SetStoragePath(cookie_path, True)
@@ -255,6 +271,7 @@ class CefBrowser(Widget):
             self.release_keyboard()
 
     def request_keyboard(self):
+        print("REQUEST KB")
         if not self.__keyboard:
             self.__keyboard = EventLoop.window.request_keyboard(self.release_keyboard, self)
             self.__keyboard.bind(on_key_down=self.on_key_down)
@@ -265,6 +282,7 @@ class CefBrowser(Widget):
         self.browser.SendFocusEvent(True)
 
     def release_keyboard(self, *kwargs):
+        print("RELEASE KB")
         # When using local keyboard mode, do all the request
         # and releases of the keyboard through js bindings,
         # otherwise some focus problems arise.
@@ -278,9 +296,11 @@ class CefBrowser(Widget):
         self.__keyboard = None
 
     def on_key_down(self, *largs):
+        print("KEY DOWN")
         self.key_manager.kivy_on_key_down(self.browser, *largs)
 
     def on_key_up(self, *largs):
+        print("KEY UP")
         self.key_manager.kivy_on_key_up(self.browser, *largs)
 
     def go_back(self):
@@ -490,26 +510,14 @@ class ClientHandler():
     # LifeSpanHandler
 
     def OnBeforePopup(self, browser, frame, targetUrl, targetFrameName, popupFeatures, windowInfo, client, browserSettings, *largs):
-        print "On Before Popup"
+        print "On Before Popup", targetUrl
+        self.popup_url = targetUrl
         wi = cefpython.WindowInfo()
         wi.SetAsChild(0)
         wi.SetAsOffscreen(0)
         windowInfo.append(wi)
         browserSettings.append({})
         return False
-
-    def OnAfterCreated(self, browser, *largs):
-        print "On After Created"
-        pw = None
-        for key in self.browser_widgets:
-            pw = self.browser_widgets[key].parent
-            if pw:
-                break
-        cb = CefBrowser(browser=browser)
-        cb.pos = (0, 100)
-        cb.size = (512, 400)
-        pw.add_widget(cb)
-        print cb, self.browser_widgets
 
     def RunModal(self, browser, *largs):
         print "Run Modal"
@@ -554,7 +562,7 @@ function __kivy__on_escape() {
         document.activeElement.blur();
     }
 }
-            """
+"""
             frame.ExecuteJavascript(jsCode)
 
     def OnLoadEnd(self, browser, frame, httpStatusCode):
@@ -658,15 +666,18 @@ client_handler = ClientHandler()
 if __name__ == '__main__':
     class CefApp(App):
         def build(self):
-            cb1 = CefBrowser(url='http://rentouch.ch')# 'http://jegger.ch/datapool/app/test.html'
-            cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test.html')#'https://rally1.rallydev.com/'
+            # cb1 = CefBrowser(url='http://rentouch.ch')
+            cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html')
+            # http://jegger.ch/datapool/app/test_popup.html
+            # http://jegger.ch/datapool/app/test_events.html
+            # https://rally1.rallydev.com/
             w = Widget()
-            w.add_widget(cb1)
+            # w.add_widget(cb1)
             w.add_widget(cb2)
-            cb1.pos = (0,0)
-            cb1.size = (512, 400)
+            # cb1.pos = (0,0)
+            # cb1.size = (512, 400)
             cb2.pos = (0,0)
-            cb2.size = (1024, 400)
+            cb2.size = (1024, 600)
             return w
 
     CefApp().run()
