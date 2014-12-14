@@ -99,6 +99,7 @@ class CefBrowser(Widget):
         self.keyboard_mode = dargs.get("keyboard_mode", "local")
         self.__rect = None
         self.browser = dargs.get("browser", None)
+        self.keyboard_above_classes = dargs.get("keyboard_above_classes", [])
         self.popup = CefBrowserPopup(self)
 
         self.register_event_type("on_loading_state_change")
@@ -243,8 +244,19 @@ class CefBrowser(Widget):
 
     __keyboard = None
 
-    def keyboard_update(self, shown, rect):
+    def keyboard_update(self, shown, rect, attributes):
+        """
+        :param shown: Show keyboard if true, hide if false (blur)
+        :param rect: [x,y,width,height] of the input element
+        :param attributes: Attributes of HTML element
+        """
         if shown:
+            # Check if keyboard should get displayed above
+            above = False
+            if 'class' in attributes:
+                if attributes['class'] in self.keyboard_above_classes:
+                    above = True
+
             self.request_keyboard()
             kb = self.__keyboard.widget
             if len(rect) < 4:
@@ -252,11 +264,27 @@ class CefBrowser(Widget):
             else:
                 x = self.x+rect[0]+(rect[2]-kb.width*kb.scale)/2
                 y = self.height+self.y-rect[1]-rect[3]-kb.height*kb.scale
+                if above:
+                    # If keyboard should displayed above the input field
+                    # Above is good on e.g. search boxes with results displayed
+                    # bellow the input field
+                    y = self.height+self.y-rect[1]
                 if y < 0:
+                    # If keyboard is bellow the window height
                     rightx = self.x+rect[0]+rect[2]
                     spleft = self.x+rect[0]
                     spright = Window.width-rightx
                     y = 0
+                    if spleft <= spright:
+                        x = rightx
+                    else:
+                        x = spleft-kb.width*kb.scale
+                elif y+kb.height*kb.scale > Window.height:
+                    # If keyboard is above the window height
+                    rightx = self.x+rect[0]+rect[2]
+                    spleft = self.x+rect[0]
+                    spright = Window.width-rightx
+                    y = Window.height-kb.height*kb.scale
                     if spleft <= spright:
                         x = rightx
                     else:
@@ -289,7 +317,9 @@ class CefBrowser(Widget):
         self.key_manager.reset_all_modifiers()
         if not self.__keyboard:
             return
-        self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__on_escape()")
+        # If we blur the field on keyboard release, jumping between form
+        # fields with tab won't work.
+        # self.browser.GetFocusedFrame().ExecuteJavascript("__kivy__on_escape()")
         self.__keyboard.unbind(on_key_down=self.on_key_down)
         self.__keyboard.unbind(on_key_up=self.on_key_up)
         self.__keyboard.release()
@@ -543,18 +573,40 @@ class ClientHandler():
             if frame.GetParent():
                 lrectconstruct = "var lrect = [];"
             jsCode = """
+window.print=function(){console.log("Print dialog blocked")}
+function isKeyboardElement(elem) {
+    var tag = elem.tagName.toUpperCase();
+    if (tag=="INPUT") return (["TEXT", "PASSWORD", "DATE", "DATETIME", "DATETIME-LOCAL", "EMAIL", "MONTH", "NUMBER", "SEARCH", "TEL", "TIME", "URL", "WEEK"].indexOf(elem.type.toUpperCase())!=-1);
+    else if (tag=="TEXTAREA") return true;
+    else {
+        var tmp = elem;
+        while (tmp && tmp.contentEditable=="inherit") {
+            tmp = tmp.parentElement;
+        }
+        if (tmp && tmp.contentEditable) return true;
+    }
+    return false;
+}
+
+function getAttributes(elem){
+    var attributes = {}
+    for (var att, i = 0, atts = elem.attributes, n = atts.length; i < n; i++){
+        att = atts[i];
+        attributes[att.nodeName] = att.nodeValue
+    }
+    return attributes
+}
+
 window.addEventListener("focus", function (e) {
     """+lrectconstruct+"""
-    var tag = e.target.tagName.toUpperCase();
-    var type = e.type;
-    __kivy__keyboard_update(true, lrect);
+    attributes = getAttributes(e.target)
+    if (isKeyboardElement(e.target)) __kivy__keyboard_update(true, lrect, attributes);
 }, true);
 
 window.addEventListener("blur", function (e) {
     """+lrectconstruct+"""
-    var tag = e.target.tagName.toUpperCase();
-    var type = e.type;
-    __kivy__keyboard_update(false, lrect);
+    attributes = getAttributes(e.target)
+    __kivy__keyboard_update(false, lrect, attributes);
 }, true);
 
 function __kivy__on_escape() {
@@ -667,7 +719,7 @@ if __name__ == '__main__':
     class CefApp(App):
         def build(self):
             # cb1 = CefBrowser(url='http://rentouch.ch')
-            cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html')
+            cb2 = CefBrowser(url='https://rally1.rallydev.com/', keyboard_above_classes=["select2-input", ])
             # http://jegger.ch/datapool/app/test_popup.html
             # http://jegger.ch/datapool/app/test_events.html
             # https://rally1.rallydev.com/
