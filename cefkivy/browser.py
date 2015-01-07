@@ -64,10 +64,9 @@ def OnAfterCreated(browser, *largs):
         pw = client_handler.browser_widgets[key].parent
         if pw:
             break
-    #cb = CefBrowser(url=self.popup_url)
     cb = CefBrowser(browser=browser)
-    cb.pos = (0, 100)
-    cb.size = (512, 400)
+    cb.pos = (0, 150)
+    cb.size = (1024, 500)
     pw.add_widget(cb)
     print cb.url, client_handler.browser_widgets
 cefpython.SetGlobalClientCallback("OnAfterCreated", OnAfterCreated)
@@ -541,7 +540,6 @@ class ClientHandler():
 
     def OnBeforePopup(self, browser, frame, targetUrl, targetFrameName, popupFeatures, windowInfo, client, browserSettings, *largs):
         print "On Before Popup", targetUrl
-        self.popup_url = targetUrl
         wi = cefpython.WindowInfo()
         wi.SetAsChild(0)
         wi.SetAsOffscreen(0)
@@ -658,7 +656,7 @@ function __kivy__on_escape() {
         bw.popup.size = (rect[2], rect[3])
 
     def OnPaint(self, browser, paintElementType, dirtyRects, buf, width, height):
-        print "ON PAINT", browser
+        #print "ON PAINT", browser
         b = buf.GetString(mode="bgra", origin="top-left")
         bw = self.browser_widgets[browser]
         if paintElementType != cefpython.PET_VIEW:
@@ -719,7 +717,7 @@ if __name__ == '__main__':
     class CefApp(App):
         def build(self):
             # cb1 = CefBrowser(url='http://rentouch.ch')
-            cb2 = CefBrowser(url='https://rally1.rallydev.com/', keyboard_above_classes=["select2-input", ])
+            cb2 = CefBrowser(url='http://jegger.ch/datapool/app/test_popup.html', keyboard_above_classes=["select2-input", ])
             # http://jegger.ch/datapool/app/test_popup.html
             # http://jegger.ch/datapool/app/test_events.html
             # https://rally1.rallydev.com/
@@ -729,7 +727,7 @@ if __name__ == '__main__':
             # cb1.pos = (0,0)
             # cb1.size = (512, 400)
             cb2.pos = (0,0)
-            cb2.size = (1024, 600)
+            cb2.size = (1024, 750)
             return w
 
     CefApp().run()

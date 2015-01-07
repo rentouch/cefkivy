@@ -159,11 +159,33 @@ class CefKeyboardManager():
 class FixedKeyboard(VKeyboard):
     def __init__(self, **kwargs):
         super(FixedKeyboard, self).__init__(**kwargs)
-
+        print("KB IN", self.do_rotation, self.do_translation)
+    
+    def on_touch_down(self, touch):
+        if self.collide_point(touch.x, touch.y):
+            self.do_translation = (True, True)
+            touch.grab(self)
+            super(FixedKeyboard, self).on_touch_down(touch)
+            print("KB TD", self.do_rotation, self.do_translation)
+            return True
+    
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            super(FixedKeyboard, self).on_touch_move(touch)
+            print("KB TM", self.do_rotation, self.do_translation)
+            return True
+    
+    def on_touch_up(self, touch):
+        if touch.grab_current is self:
+            super(FixedKeyboard, self).on_touch_up(touch)
+            print("KB TU", self.do_rotation, self.do_translation)
+            return True
+    
     def setup_mode_free(self):
         """Overwrite free function to set fixed pos
         """
-        self.do_rotation = False
+        print "setup_mode_free"
+        self.do_rotation = True
         self.do_scale = False
         self.scale = 1.2
         target = self.target
